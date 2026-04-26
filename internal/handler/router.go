@@ -13,6 +13,8 @@ func NewRouter(
 	cfg *config.Config,
 	logger *zap.Logger,
 	authHandler *AuthHandler,
+	ordersHandler *OrdersHandler,
+	balanceHandler *BalanceHandler,
 ) chi.Router {
 	r := chi.NewRouter()
 
@@ -26,6 +28,11 @@ func NewRouter(
 
 	r.Group(func(r chi.Router) {
 		r.Use(customMiddleware.AuthMiddleware(cfg.AuthSecret, logger))
+		r.Post("/api/user/orders", ordersHandler.UploadOrder)
+		r.Get("/api/user/orders", ordersHandler.ListOrders)
+		r.Get("/api/user/balance", balanceHandler.GetBalance)
+		r.Post("/api/user/balance/withdraw", balanceHandler.Withdraw)
+		r.Get("/api/user/withdrawals", balanceHandler.ListWithdrawals)
 	})
 
 	return r

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"go-musthave-diploma-tpl/internal/repository/postgres"
 
-	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -28,21 +27,19 @@ var (
 )
 
 type UserRepository interface {
-	CreateUser(ctx context.Context, login, passwordHash string, logger *zap.Logger) (string, error)
-	GetUserByLogin(ctx context.Context, login string, logger *zap.Logger) (*postgres.User, error)
+	CreateUser(ctx context.Context, login, passwordHash string) (string, error)
+	GetUserByLogin(ctx context.Context, login string) (*postgres.User, error)
 }
 
 type AuthService struct {
 	userRepo UserRepository
 	secret   string
-	logger   *zap.Logger
 }
 
-func NewAuthService(userRepo UserRepository, secret string, logger *zap.Logger) *AuthService {
+func NewAuthService(userRepo UserRepository, secret string) *AuthService {
 	return &AuthService{
 		userRepo: userRepo,
 		secret:   secret,
-		logger:   logger,
 	}
 }
 
@@ -72,7 +69,7 @@ func (s *AuthService) Register(ctx context.Context, login, password string) (str
 		return "", fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	userID, err := s.userRepo.CreateUser(ctx, login, string(hash), s.logger)
+	userID, err := s.userRepo.CreateUser(ctx, login, string(hash))
 	if err != nil {
 		if errors.Is(err, postgres.ErrUserExists) {
 			return "", ErrUserExists
@@ -92,10 +89,9 @@ func (s *AuthService) Login(ctx context.Context, login, password string) (string
 		return "", err
 	}
 
-	user, err := s.userRepo.GetUserByLogin(ctx, login, s.logger)
+	user, err := s.userRepo.GetUserByLogin(ctx, login)
 	if err != nil {
 		if errors.Is(err, postgres.ErrUserNotFound) {
-			s.logger.Info("user not found", zap.String("login", login))
 			return "", ErrInvalidCredentials
 		}
 		return "", fmt.Errorf("failed to get user: %w", err)

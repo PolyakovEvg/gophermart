@@ -135,7 +135,7 @@ func TestAuthHandler_Login(t *testing.T) {
 			reqBody: `{"login":"user","password":"pass1234"}`,
 			mockService: &mockAuthService{
 				loginFn: func(ctx context.Context, login, password string) (string, error) {
-					return "", errors.New("invalid credentials")
+					return "", service.ErrInvalidCredentials
 				},
 			},
 			wantStatusCode: http.StatusUnauthorized,

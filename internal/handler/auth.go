@@ -36,41 +36,29 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.logger.Warn("failed to decode request", zap.Error(err))
 		http.Error(w, "invalid JSON", http.StatusBadRequest)
 		return
 	}
 
 	token, err := h.authService.Register(ctx, req.Login, req.Password)
 	if err != nil {
-		if errors.Is(err, service.ErrUserExists) {
+		switch {
+		case errors.Is(err, service.ErrUserExists):
 			http.Error(w, "login already taken", http.StatusConflict)
-			return
-		}
-		if errors.Is(err, service.ErrLoginPasswordRequired) {
+		case errors.Is(err, service.ErrLoginPasswordRequired):
 			http.Error(w, "login and password required", http.StatusBadRequest)
-			return
-		}
-		if errors.Is(err, service.ErrLoginPasswordEqual) {
+		case errors.Is(err, service.ErrLoginPasswordEqual):
 			http.Error(w, "login and password should not be equal", http.StatusBadRequest)
-			return
-		}
-		if errors.Is(err, service.ErrPasswordTooShort) {
+		case errors.Is(err, service.ErrPasswordTooShort):
 			http.Error(w, "password too short", http.StatusBadRequest)
-			return
+		default:
+			h.logger.Error("registration error", zap.Error(err))
+			http.Error(w, "internal error", http.StatusInternalServerError)
 		}
-		if errors.Is(err, service.ErrLoginPasswordEqual) {
-			http.Error(w, "login and password should not be equal", http.StatusBadRequest)
-			return
-		}
-
-		h.logger.Error("registration error", zap.Error(err))
-		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Authorization", "Bearer "+token)
 	w.WriteHeader(http.StatusOK)
-
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
@@ -86,11 +74,11 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	token, err := h.authService.Login(ctx, req.Login, req.Password)
 	if err != nil {
-		if err.Error() == "invalid credentials" {
+		if errors.Is(err, service.ErrInvalidCredentials) {
 			http.Error(w, "invalid credentials", http.StatusUnauthorized)
 			return
 		}
-		if err.Error() == "login and password required" {
+		if errors.Is(err, service.ErrLoginPasswordRequired) {
 			http.Error(w, "login and password required", http.StatusBadRequest)
 			return
 		}

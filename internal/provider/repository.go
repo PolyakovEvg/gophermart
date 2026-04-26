@@ -1,10 +1,13 @@
-package provider
+ package provider
 
-import "go-musthave-diploma-tpl/internal/repository/postgres"
+import (
+	"go-musthave-diploma-tpl/internal/repository/postgres"
+)
 
 func NewUserRepository(store *postgres.DBStorage) *postgres.UserRepository {
 	return postgres.NewUserRepository(store.DB)
 }
+
 func NewOrderRepository(store *postgres.DBStorage) *postgres.OrderRepository {
 	return postgres.NewOrderRepository(store.DB)
 }

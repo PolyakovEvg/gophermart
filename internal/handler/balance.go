@@ -65,7 +65,6 @@ func (h *BalanceHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.logger.Warn("failed to decode withdraw request", zap.Error(err))
 		http.Error(w, "invalid JSON", http.StatusBadRequest)
 		return
 	}

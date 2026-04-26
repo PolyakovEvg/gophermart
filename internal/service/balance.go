@@ -6,7 +6,6 @@ import (
 	"go-musthave-diploma-tpl/internal/repository/postgres"
 
 	"github.com/shopspring/decimal"
-	"go.uber.org/zap"
 )
 
 type BalanceServicer interface {
@@ -16,21 +15,18 @@ type BalanceServicer interface {
 }
 type BalanceService struct {
 	withdrawRepo *postgres.WithdrawalRepository
-	logger       *zap.Logger
 }
 
-func NewBalanceService(withdrawRepo *postgres.WithdrawalRepository, logger *zap.Logger,
-) *BalanceService {
+func NewBalanceService(withdrawRepo *postgres.WithdrawalRepository) *BalanceService {
 	return &BalanceService{
 		withdrawRepo: withdrawRepo,
-		logger:       logger,
 	}
 }
 
 func (s *BalanceService) GetBalance(ctx context.Context, userID string,
 ) (current, withdrawn decimal.Decimal, err error) {
 
-	accrued, withdrawn, err := s.withdrawRepo.GetTotals(ctx, userID, s.logger)
+	accrued, withdrawn, err := s.withdrawRepo.GetTotals(ctx, userID)
 	if err != nil {
 		return decimal.Zero, decimal.Zero, err
 	}
@@ -54,10 +50,10 @@ func (s *BalanceService) Withdraw(ctx context.Context, userID, orderNumber strin
 		return postgres.ErrNotEnoughFunds
 	}
 
-	return s.withdrawRepo.Create(ctx, userID, orderNumber, sum, s.logger)
+	return s.withdrawRepo.Create(ctx, userID, orderNumber, sum)
 }
 
 func (s *BalanceService) ListWithdrawals(ctx context.Context, userID string,
 ) ([]postgres.Withdrawal, error) {
-	return s.withdrawRepo.ListByUser(ctx, userID, s.logger)
+	return s.withdrawRepo.ListByUser(ctx, userID)
 }

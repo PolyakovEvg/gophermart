@@ -8,13 +8,11 @@ import (
 	"go-musthave-diploma-tpl/internal/repository/postgres"
 
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zaptest"
 	"golang.org/x/crypto/bcrypt"
 )
 
 /*
-================ MOCK =================
+=============== MOCK =================
 */
 
 type mockUserRepo struct {
@@ -22,20 +20,11 @@ type mockUserRepo struct {
 	getUserByLoginFn func(ctx context.Context, login string) (*postgres.User, error)
 }
 
-func (m *mockUserRepo) CreateUser(
-	ctx context.Context,
-	login string,
-	passwordHash string,
-	logger *zap.Logger,
-) (string, error) {
+func (m *mockUserRepo) CreateUser(ctx context.Context, login, passwordHash string) (string, error) {
 	return m.createUserFn(ctx, login, passwordHash)
 }
 
-func (m *mockUserRepo) GetUserByLogin(
-	ctx context.Context,
-	login string,
-	logger *zap.Logger,
-) (*postgres.User, error) {
+func (m *mockUserRepo) GetUserByLogin(ctx context.Context, login string) (*postgres.User, error) {
 	return m.getUserByLoginFn(ctx, login)
 }
 
@@ -84,9 +73,7 @@ func TestAuthService_Register(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			logger := zaptest.NewLogger(t)
-
-			service := NewAuthService(tt.repo, "secret", logger)
+			service := NewAuthService(tt.repo, "secret")
 
 			token, err := service.Register(context.Background(), tt.login, tt.password)
 
@@ -163,9 +150,7 @@ func TestAuthService_Login(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			logger := zaptest.NewLogger(t)
-
-			service := NewAuthService(tt.repo, "secret", logger)
+			service := NewAuthService(tt.repo, "secret")
 
 			token, err := service.Login(context.Background(), tt.login, tt.password)
 

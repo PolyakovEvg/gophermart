@@ -33,7 +33,7 @@ func (w *AccrualWorker) Process(ctx context.Context) {
 	dbCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
-	orders, err := w.OrderRepo.GetOrdersForProcessing(dbCtx, 10, w.Logger)
+	orders, err := w.OrderRepo.GetOrdersForProcessing(dbCtx, 10)
 	if err != nil {
 		w.Logger.Error("failed to get orders for processing", zap.Error(err))
 		return
@@ -56,12 +56,12 @@ func (w *AccrualWorker) Process(ctx context.Context) {
 
 		switch resp.Status {
 		case accrual.StatusInvalid:
-			_ = w.OrderRepo.UpdateOrderStatus(dbCtx, order.ID, "INVALID", nil, w.Logger)
+			_ = w.OrderRepo.UpdateOrderStatus(dbCtx, order.ID, "INVALID", nil)
 		case accrual.StatusProcessing:
-			_ = w.OrderRepo.UpdateOrderStatus(dbCtx, order.ID, "PROCESSING", nil, w.Logger)
+			_ = w.OrderRepo.UpdateOrderStatus(dbCtx, order.ID, "PROCESSING", nil)
 		case accrual.StatusProcessed:
 			dec := resp.Accrual
-			_ = w.OrderRepo.UpdateOrderStatus(dbCtx, order.ID, "PROCESSED", &dec, w.Logger)
+			_ = w.OrderRepo.UpdateOrderStatus(dbCtx, order.ID, "PROCESSED", &dec)
 		}
 	}
 }

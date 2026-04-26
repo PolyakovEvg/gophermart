@@ -12,15 +12,13 @@ import (
 )
 
 func NewStorage(lc fx.Lifecycle, cfg *config.Config, logger *zap.Logger) (*postgres.DBStorage, error) {
-	dbStore, err := postgres.NewDBStorage(cfg.DatabaseURI, logger)
+	dbStore, err := postgres.NewDBStorage(cfg.DatabaseURI)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to DB: %w", err)
 	}
-	logger.Info("Using PostgreSQL storage")
 
 	lc.Append(fx.Hook{
 		OnStop: func(ctx context.Context) error {
-			logger.Info("closing database connection")
 			return dbStore.Close()
 		},
 	})

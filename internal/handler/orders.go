@@ -61,7 +61,6 @@ func (h *OrdersHandler) UploadOrder(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "invalid order number", http.StatusUnprocessableEntity)
 		case errors.Is(err, service.ErrOrderAlreadyUploaded):
 			w.WriteHeader(http.StatusOK)
-			return
 		case errors.Is(err, postgres.ErrOrderExists):
 			http.Error(w, "order already exists", http.StatusConflict)
 		default:
@@ -89,7 +88,7 @@ func (h *OrdersHandler) ListOrders(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(orders) == 0 {
-		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte("[]"))
 		return
 	}

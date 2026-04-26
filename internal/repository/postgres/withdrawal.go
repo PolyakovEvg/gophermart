@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
-	"go.uber.org/zap"
 )
 
 var (
@@ -35,7 +34,6 @@ func (r *WithdrawalRepository) Create(
 	ctx context.Context,
 	userID, orderNumber string,
 	sum decimal.Decimal,
-	logger *zap.Logger,
 ) error {
 	query := `
 		INSERT INTO withdrawals (user_id, order_number, sum)
@@ -45,24 +43,16 @@ func (r *WithdrawalRepository) Create(
 	_, err := r.db.ExecContext(ctx, query, userID, orderNumber, sum)
 	if err != nil {
 		if strings.Contains(err.Error(), "withdrawals_user_id_order_number_key") {
-			logger.Warn("withdrawal order already exists", zap.String("order", orderNumber))
 			return ErrInvalidOrder
 		}
-		logger.Error("failed to create withdrawal", zap.Error(err))
 		return err
 	}
-
-	logger.Info("withdrawal created",
-		zap.String("order", orderNumber),
-		zap.String("sum", sum.String()),
-	)
 	return nil
 }
 
 func (r *WithdrawalRepository) ListByUser(
 	ctx context.Context,
 	userID string,
-	logger *zap.Logger,
 ) ([]Withdrawal, error) {
 	query := `
 		SELECT id, user_id, order_number, sum, processed_at
@@ -73,7 +63,6 @@ func (r *WithdrawalRepository) ListByUser(
 
 	rows, err := r.db.QueryContext(ctx, query, userID)
 	if err != nil {
-		logger.Error("failed to query withdrawals", zap.Error(err))
 		return nil, err
 	}
 	defer rows.Close()
@@ -88,13 +77,11 @@ func (r *WithdrawalRepository) ListByUser(
 			&w.Sum,
 			&w.ProcessedAt,
 		); err != nil {
-			logger.Error("failed to scan withdrawal", zap.Error(err))
 			return nil, err
 		}
 		res = append(res, w)
 	}
 	if err := rows.Err(); err != nil {
-		logger.Error("rows iteration error", zap.Error(err))
 		return nil, err
 	}
 
@@ -104,7 +91,6 @@ func (r *WithdrawalRepository) ListByUser(
 func (r *WithdrawalRepository) GetTotals(
 	ctx context.Context,
 	userID string,
-	logger *zap.Logger,
 ) (accrued, withdrawn decimal.Decimal, err error) {
 	query := `
 		SELECT
@@ -121,7 +107,6 @@ func (r *WithdrawalRepository) GetTotals(
 
 	err = r.db.QueryRowContext(ctx, query, userID).Scan(&accrued, &withdrawn)
 	if err != nil {
-		logger.Error("failed to calculate totals", zap.Error(err))
 		return decimal.Zero, decimal.Zero, err
 	}
 

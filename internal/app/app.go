@@ -82,7 +82,7 @@ func startServer(lc fx.Lifecycle, cfg *config.Config, router chi.Router, logger 
 }
 
 func runMigrations(cfg *config.Config, logger *zap.Logger) error {
-	if err := postgres.RunMigrations(cfg.DatabaseURI, logger); err != nil {
+	if err := postgres.RunMigrations(cfg.DatabaseURI); err != nil {
 		logger.Error("migrations failed", zap.Error(err))
 		return err
 	}

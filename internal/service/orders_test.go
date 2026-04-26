@@ -10,41 +10,39 @@ import (
 
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
 )
 
 type mockOrdersRepo struct {
-	CreateFunc      func(ctx context.Context, userID, number string, logger *zap.Logger) error
-	GetByNumberFunc func(ctx context.Context, number string, logger *zap.Logger) (*postgres.Order, error)
-	GetByUserFunc   func(ctx context.Context, userID string, logger *zap.Logger) ([]postgres.Order, error)
+	CreateFunc      func(ctx context.Context, userID, number string) error
+	GetByNumberFunc func(ctx context.Context, number string) (*postgres.Order, error)
+	GetByUserFunc   func(ctx context.Context, userID string) ([]postgres.Order, error)
 }
 
-func (m *mockOrdersRepo) CreateOrder(ctx context.Context, userID, number string, logger *zap.Logger) error {
-	return m.CreateFunc(ctx, userID, number, logger)
+func (m *mockOrdersRepo) CreateOrder(ctx context.Context, userID, number string) error {
+	return m.CreateFunc(ctx, userID, number)
 }
 
-func (m *mockOrdersRepo) GetOrderByNumber(ctx context.Context, number string, logger *zap.Logger) (*postgres.Order, error) {
-	return m.GetByNumberFunc(ctx, number, logger)
+func (m *mockOrdersRepo) GetOrderByNumber(ctx context.Context, number string) (*postgres.Order, error) {
+	return m.GetByNumberFunc(ctx, number)
 }
 
-func (m *mockOrdersRepo) GetOrderByUser(ctx context.Context, userID string, logger *zap.Logger) ([]postgres.Order, error) {
-	return m.GetByUserFunc(ctx, userID, logger)
+func (m *mockOrdersRepo) GetOrderByUser(ctx context.Context, userID string) ([]postgres.Order, error) {
+	return m.GetByUserFunc(ctx, userID)
 }
 
 func TestOrdersService_UploadOrder(t *testing.T) {
-	logger, _ := zap.NewDevelopment()
 	ctx := context.Background()
 
 	t.Run("success", func(t *testing.T) {
 		mockRepo := &mockOrdersRepo{
-			GetByNumberFunc: func(ctx context.Context, number string, logger *zap.Logger) (*postgres.Order, error) {
+			GetByNumberFunc: func(ctx context.Context, number string) (*postgres.Order, error) {
 				return nil, nil
 			},
-			CreateFunc: func(ctx context.Context, userID, number string, logger *zap.Logger) error {
+			CreateFunc: func(ctx context.Context, userID, number string) error {
 				return nil
 			},
 		}
-		svc := service.NewOrdersService(logger, mockRepo)
+		svc := service.NewOrdersService(mockRepo)
 
 		err := svc.UploadOrder(ctx, "user1", "12345678903")
 		require.NoError(t, err)
@@ -52,7 +50,7 @@ func TestOrdersService_UploadOrder(t *testing.T) {
 
 	t.Run("empty_number", func(t *testing.T) {
 		mockRepo := &mockOrdersRepo{}
-		svc := service.NewOrdersService(logger, mockRepo)
+		svc := service.NewOrdersService(mockRepo)
 
 		err := svc.UploadOrder(ctx, "user1", "")
 		require.Error(t, err)
@@ -61,7 +59,7 @@ func TestOrdersService_UploadOrder(t *testing.T) {
 
 	t.Run("invalid_luhn", func(t *testing.T) {
 		mockRepo := &mockOrdersRepo{}
-		svc := service.NewOrdersService(logger, mockRepo)
+		svc := service.NewOrdersService(mockRepo)
 
 		err := svc.UploadOrder(ctx, "user1", "12345678901")
 		require.ErrorIs(t, err, postgres.ErrInvalidOrder)
@@ -69,7 +67,7 @@ func TestOrdersService_UploadOrder(t *testing.T) {
 
 	t.Run("already_uploaded_by_same_user", func(t *testing.T) {
 		mockRepo := &mockOrdersRepo{
-			GetByNumberFunc: func(ctx context.Context, number string, logger *zap.Logger) (*postgres.Order, error) {
+			GetByNumberFunc: func(ctx context.Context, number string) (*postgres.Order, error) {
 				return &postgres.Order{
 					ID:     "1",
 					Number: "12345678903",
@@ -78,7 +76,7 @@ func TestOrdersService_UploadOrder(t *testing.T) {
 				}, nil
 			},
 		}
-		svc := service.NewOrdersService(logger, mockRepo)
+		svc := service.NewOrdersService(mockRepo)
 
 		err := svc.UploadOrder(ctx, "user1", "12345678903")
 		require.ErrorIs(t, err, service.ErrOrderAlreadyUploaded)
@@ -86,7 +84,7 @@ func TestOrdersService_UploadOrder(t *testing.T) {
 
 	t.Run("already_uploaded_by_other_user", func(t *testing.T) {
 		mockRepo := &mockOrdersRepo{
-			GetByNumberFunc: func(ctx context.Context, number string, logger *zap.Logger) (*postgres.Order, error) {
+			GetByNumberFunc: func(ctx context.Context, number string) (*postgres.Order, error) {
 				return &postgres.Order{
 					ID:     "1",
 					Number: "12345678903",
@@ -95,7 +93,7 @@ func TestOrdersService_UploadOrder(t *testing.T) {
 				}, nil
 			},
 		}
-		svc := service.NewOrdersService(logger, mockRepo)
+		svc := service.NewOrdersService(mockRepo)
 
 		err := svc.UploadOrder(ctx, "user1", "12345678903")
 		require.ErrorIs(t, err, postgres.ErrOrderExists)
@@ -103,14 +101,14 @@ func TestOrdersService_UploadOrder(t *testing.T) {
 
 	t.Run("create_error", func(t *testing.T) {
 		mockRepo := &mockOrdersRepo{
-			GetByNumberFunc: func(ctx context.Context, number string, logger *zap.Logger) (*postgres.Order, error) {
+			GetByNumberFunc: func(ctx context.Context, number string) (*postgres.Order, error) {
 				return nil, nil
 			},
-			CreateFunc: func(ctx context.Context, userID, number string, logger *zap.Logger) error {
+			CreateFunc: func(ctx context.Context, userID, number string) error {
 				return errors.New("db error")
 			},
 		}
-		svc := service.NewOrdersService(logger, mockRepo)
+		svc := service.NewOrdersService(mockRepo)
 
 		err := svc.UploadOrder(ctx, "user1", "12345678903")
 		require.Error(t, err)
@@ -119,14 +117,14 @@ func TestOrdersService_UploadOrder(t *testing.T) {
 
 	t.Run("race_condition_same_user", func(t *testing.T) {
 		mockRepo := &mockOrdersRepo{
-			GetByNumberFunc: func(ctx context.Context, number string, logger *zap.Logger) (*postgres.Order, error) {
+			GetByNumberFunc: func(ctx context.Context, number string) (*postgres.Order, error) {
 				return nil, nil
 			},
-			CreateFunc: func(ctx context.Context, userID, number string, logger *zap.Logger) error {
+			CreateFunc: func(ctx context.Context, userID, number string) error {
 				return postgres.ErrOrderExists
 			},
 		}
-		svc := service.NewOrdersService(logger, mockRepo)
+		svc := service.NewOrdersService(mockRepo)
 
 		err := svc.UploadOrder(ctx, "user1", "12345678903")
 		require.ErrorIs(t, err, postgres.ErrOrderExists)
@@ -134,12 +132,11 @@ func TestOrdersService_UploadOrder(t *testing.T) {
 }
 
 func TestOrdersService_ListOrders(t *testing.T) {
-	logger, _ := zap.NewDevelopment()
 	ctx := context.Background()
 
 	t.Run("orders_exist", func(t *testing.T) {
 		mockRepo := &mockOrdersRepo{
-			GetByUserFunc: func(ctx context.Context, userID string, logger *zap.Logger) ([]postgres.Order, error) {
+			GetByUserFunc: func(ctx context.Context, userID string) ([]postgres.Order, error) {
 				return []postgres.Order{
 					{
 						ID:         "1",
@@ -151,7 +148,7 @@ func TestOrdersService_ListOrders(t *testing.T) {
 				}, nil
 			},
 		}
-		svc := service.NewOrdersService(logger, mockRepo)
+		svc := service.NewOrdersService(mockRepo)
 
 		orders, err := svc.ListOrders(ctx, "user1")
 		require.NoError(t, err)
@@ -162,7 +159,7 @@ func TestOrdersService_ListOrders(t *testing.T) {
 	t.Run("orders_with_accrual", func(t *testing.T) {
 		accrual := decimal.NewFromFloat(42.50)
 		mockRepo := &mockOrdersRepo{
-			GetByUserFunc: func(ctx context.Context, userID string, logger *zap.Logger) ([]postgres.Order, error) {
+			GetByUserFunc: func(ctx context.Context, userID string) ([]postgres.Order, error) {
 				return []postgres.Order{
 					{
 						ID:         "1",
@@ -175,7 +172,7 @@ func TestOrdersService_ListOrders(t *testing.T) {
 				}, nil
 			},
 		}
-		svc := service.NewOrdersService(logger, mockRepo)
+		svc := service.NewOrdersService(mockRepo)
 
 		orders, err := svc.ListOrders(ctx, "user1")
 		require.NoError(t, err)
@@ -186,11 +183,11 @@ func TestOrdersService_ListOrders(t *testing.T) {
 
 	t.Run("no_orders", func(t *testing.T) {
 		mockRepo := &mockOrdersRepo{
-			GetByUserFunc: func(ctx context.Context, userID string, logger *zap.Logger) ([]postgres.Order, error) {
+			GetByUserFunc: func(ctx context.Context, userID string) ([]postgres.Order, error) {
 				return []postgres.Order{}, nil
 			},
 		}
-		svc := service.NewOrdersService(logger, mockRepo)
+		svc := service.NewOrdersService(mockRepo)
 
 		orders, err := svc.ListOrders(ctx, "user1")
 		require.NoError(t, err)
@@ -199,11 +196,11 @@ func TestOrdersService_ListOrders(t *testing.T) {
 
 	t.Run("error_from_repo", func(t *testing.T) {
 		mockRepo := &mockOrdersRepo{
-			GetByUserFunc: func(ctx context.Context, userID string, logger *zap.Logger) ([]postgres.Order, error) {
+			GetByUserFunc: func(ctx context.Context, userID string) ([]postgres.Order, error) {
 				return nil, errors.New("db error")
 			},
 		}
-		svc := service.NewOrdersService(logger, mockRepo)
+		svc := service.NewOrdersService(mockRepo)
 
 		orders, err := svc.ListOrders(ctx, "user1")
 		require.Error(t, err)

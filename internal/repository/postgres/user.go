@@ -5,8 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"strings"
-
-	"go.uber.org/zap"
 )
 
 var (
@@ -25,12 +23,10 @@ type UserRepository struct {
 }
 
 func NewUserRepository(db *sql.DB) *UserRepository {
-	return &UserRepository{
-		DB: db,
-	}
+	return &UserRepository{DB: db}
 }
 
-func (r *UserRepository) CreateUser(ctx context.Context, login, passwordHash string, logger *zap.Logger) (string, error) {
+func (r *UserRepository) CreateUser(ctx context.Context, login, passwordHash string) (string, error) {
 	var userID string
 
 	err := r.DB.QueryRowContext(ctx,
@@ -39,29 +35,23 @@ func (r *UserRepository) CreateUser(ctx context.Context, login, passwordHash str
 	if err != nil {
 		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") &&
 			strings.Contains(err.Error(), "users_login_key") {
-			logger.Warn("user already exists", zap.String("login", login))
 			return "", ErrUserExists
 		}
-
-		logger.Error("failed to insert user", zap.Error(err))
 		return "", err
 	}
-	logger.Info("user created", zap.String("id", userID))
 	return userID, nil
 }
 
-func (r *UserRepository) GetUserByLogin(ctx context.Context, login string, logger *zap.Logger) (*User, error) {
+func (r *UserRepository) GetUserByLogin(ctx context.Context, login string) (*User, error) {
 	u := &User{}
 	err := r.DB.QueryRowContext(ctx,
 		"SELECT id, login, password_hash FROM users WHERE login = $1",
 		login).Scan(&u.ID, &u.Login, &u.PasswordHash)
 	if err != nil {
-		if errors.Is(ErrUserNotFound, sql.ErrNoRows) {
-			logger.Warn("failed to find user by login", zap.String("login", login))
-			return nil, err
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrUserNotFound
 		}
 		return nil, err
 	}
-	logger.Info("user found", zap.String("id", u.ID))
 	return u, nil
 }

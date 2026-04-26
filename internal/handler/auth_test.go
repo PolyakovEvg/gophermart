@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"go-musthave-diploma-tpl/internal/repository/postgres"
+	"go-musthave-diploma-tpl/internal/service"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -64,7 +64,7 @@ func TestAuthHandler_Register(t *testing.T) {
 			reqBody: `{"login":"user","password":"pass1234"}`,
 			mockService: &mockAuthService{
 				registerFn: func(ctx context.Context, login, password string) (string, error) {
-					return "", postgres.ErrUserExists
+					return "", service.ErrUserExists
 				},
 			},
 			wantStatusCode: http.StatusConflict,

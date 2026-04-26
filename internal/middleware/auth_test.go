@@ -17,7 +17,6 @@ func TestAuthMiddleware(t *testing.T) {
 	secret := "testsecret"
 	logger := zaptest.NewLogger(t)
 
-	// создаём тестовый хендлер, который пишет userID в ответ
 	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		userID, ok := GetUserID(r)
 		if !ok {
@@ -84,7 +83,6 @@ func TestAuthMiddleware(t *testing.T) {
 }
 
 func TestGetUserID(t *testing.T) {
-	// создаём request с контекстом
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	ctx := req.Context()
 	ctx = context.WithValue(ctx, UserCtxKey, "user-123")
@@ -94,7 +92,6 @@ func TestGetUserID(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, "user-123", userID)
 
-	// тест без значения
 	req2 := httptest.NewRequest(http.MethodGet, "/", nil)
 	userID2, ok2 := GetUserID(req2)
 	assert.False(t, ok2)

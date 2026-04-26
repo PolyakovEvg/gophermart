@@ -15,9 +15,9 @@ import (
 )
 
 type WithdrawalResponse struct {
-	Order       string          `json:"order"`
-	Sum         decimal.Decimal `json:"sum"`
-	ProcessedAt string          `json:"processed_at"`
+	Order       string  `json:"order"`
+	Sum         float64 `json:"sum"`
+	ProcessedAt string  `json:"processed_at"`
 }
 
 type BalanceHandler struct {
@@ -43,9 +43,9 @@ func (h *BalanceHandler) GetBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := map[string]decimal.Decimal{
-		"current":   current,
-		"withdrawn": withdrawn,
+	resp := map[string]float64{
+		"current":   current.InexactFloat64(),
+		"withdrawn": withdrawn.InexactFloat64(),
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -112,7 +112,7 @@ func (h *BalanceHandler) ListWithdrawals(w http.ResponseWriter, r *http.Request)
 	for _, wdr := range list {
 		resp = append(resp, WithdrawalResponse{
 			Order:       wdr.OrderNumber,
-			Sum:         wdr.Sum,
+			Sum:         wdr.Sum.InexactFloat64(),
 			ProcessedAt: wdr.ProcessedAt.Format(time.RFC3339),
 		})
 	}

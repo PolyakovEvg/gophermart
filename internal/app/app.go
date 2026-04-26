@@ -27,13 +27,22 @@ func New() *App {
 			provider.NewLogger,
 			provider.NewStorage,
 			provider.NewUserRepository,
+			provider.NewOrderRepository,
+			provider.NewWithdrawalRepository,
 			provider.NewAuthService,
+			provider.NewOrdersService,
+			provider.NewBalanceService,
 			provider.NewAuthHandler,
+			provider.NewOrdersHandler,
+			provider.NewBalanceHandler,
 			handler.NewRouter,
+			provider.NewAccrualClient,
+			provider.NewAccrualWorker,
 		),
 		fx.Invoke(
 			startServer,
 			runMigrations,
+			startAccrualWorker,
 		),
 	)
 
@@ -81,7 +90,7 @@ func runMigrations(cfg *config.Config, logger *zap.Logger) error {
 	return nil
 }
 
-func StartAccrualWorker(lc fx.Lifecycle, worker *service.AccrualWorker, logger *zap.Logger) {
+func startAccrualWorker(lc fx.Lifecycle, worker *service.AccrualWorker, logger *zap.Logger) {
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			logger.Info("starting accrual worker")

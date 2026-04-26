@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/fx"
@@ -12,6 +13,7 @@ import (
 	"go-musthave-diploma-tpl/internal/handler"
 	"go-musthave-diploma-tpl/internal/provider"
 	"go-musthave-diploma-tpl/internal/repository/postgres"
+	"go-musthave-diploma-tpl/internal/service"
 )
 
 type App struct {
@@ -77,4 +79,32 @@ func runMigrations(cfg *config.Config, logger *zap.Logger) error {
 	}
 	logger.Info("migrations completed successfully")
 	return nil
+}
+
+func StartAccrualWorker(lc fx.Lifecycle, worker *service.AccrualWorker, logger *zap.Logger) {
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			logger.Info("starting accrual worker")
+
+			go func() {
+				ticker := time.NewTicker(5 * time.Second)
+				defer ticker.Stop()
+
+				for {
+					select {
+					case <-ctx.Done():
+						logger.Info("accrual worker stopped", zap.Error(ctx.Err()))
+						return
+					case <-ticker.C:
+						worker.Process(ctx)
+					}
+				}
+			}()
+			return nil
+		},
+		OnStop: func(ctx context.Context) error {
+			logger.Info("stopping accrual worker")
+			return nil
+		},
+	})
 }
